@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Body Resonance Lab - 人体周波数アナライザー</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@300;400;500;700&family=Orbitron:wght@400;600;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        cyber: {
+                            bg: '#0a0d14',
+                            card: '#121824',
+                            border: '#1e293b',
+                            accent: '#00f2fe',
+                            secondary: '#4facfe',
+                            purple: '#7f00ff',
+                            gold: '#ffb302'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['"Zen Kaku Gothic New"', 'sans-serif'],
+                        tech: ['"Orbitron"', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #0a0d14;
+            color: #e2e8f0;
+            font-family: 'Zen Kaku Gothic New', sans-serif;
+            overflow-x: hidden;
+        }
+        .glow-effect {
+            box-shadow: 0 0 25px rgba(0, 242, 254, 0.25);
+        }
+        .glow-text {
+            text-shadow: 0 0 10px rgba(0, 242, 254, 0.6);
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0a0d14;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #00f2fe;
+        }
+        @keyframes pulseGlow {
+            0%, 100% { opacity: 0.3; transform: scale(0.98); }
+            50% { opacity: 0.8; transform: scale(1.02); }
+        }
+        .pulse-visual {
+            animation: pulseGlow 3s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-cyan-500 selection:text-black">
+
+    <header class="border-b border-slate-800 bg-cyber-bg/90 backdrop-blur sticky top-0 z-50 px-4 lg:px-8 py-3 flex justify-between items-center">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center text-slate-950 font-bold text-xl shadow-lg shadow-cyan-500/20">
+                <i class="fa-solid fa-wave-square"></i>
+            </div>
+            <div>
+                <h1 class="font-tech font-bold text-lg md:text-xl tracking-wider bg-gradient-to-r from-cyan-400 via-blue-400 to-indigo-400 bg-clip-text text-transparent">
+                    BODY RESONANCE LAB
+                </h1>
+                <p class="text-xs text-slate-400">人体部位別・周波数アナライザー & 音響振動共鳴</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <button id="disclaimerBtn" class="px-3 py-1.5 rounded-lg text-xs border border-slate-700 hover:border-cyan-500 text-slate-300 hover:text-white transition flex items-center gap-1.5">
+                <i class="fa-solid fa-circle-info text-cyan-400"></i>
+                <span>免責事項</span>
+            </button>
+            <div class="hidden sm:flex items-center gap-2 text-xs bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-lg text-slate-400">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>Web Audio API: 稼働中</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- LEFT COLUMN: Body Selector & Search (5 cols) -->
+        <section class="lg:col-span-5 flex flex-col gap-6">
+            
+            <!-- Category Tabs & Search -->
+            <div class="bg-cyber-card border border-cyber-border rounded-2xl p-4 flex flex-col gap-3 shadow-lg">
+                <div class="relative">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
+                    <input type="text" id="searchInput" placeholder="部位・器官名、効能を検索（例: 心臓, 髪の毛, 528Hz）" 
+                           class="w-full bg-slate-900/80 border border-slate-700/80 rounded-xl pl-9 pr-4 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-400 transition">
+                </div>
+
+                <!-- Category Pills -->
+                <div class="flex gap-1.5 overflow-x-auto pb-1 text-xs" id="categoryTabs">
+                    <button data-cat="all" class="cat-tab px-3 py-1.5 rounded-lg bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-medium whitespace-nowrap">すべて</button>
+                    <button data-cat="head" class="cat-tab px-3 py-1.5 rounded-lg bg-slate-800 text-slate-400 hover:bg-slate-700 transition whitespace-nowrap">頭部・皮膚・髪</button>
+                    <button data-cat="organ" class="cat-tab px-3 py-1.5 rounded-lg bg-slate-800 text-slate-400 hover:bg-slate-700 transition whitespace-nowrap">主要臓器</button>
+                    <button data-cat="circulatory" class="cat-tab px-3 py-1.5 rounded-lg bg-slate-800 text-slate-400 hover:bg-slate-700 transition whitespace-nowrap">血管・循環系</button>
+                    <button data-cat="tissue" class="cat-tab px-3 py-1.5 rounded-lg bg-slate-800 text-slate-400 hover:bg-slate-700 transition whitespace-nowrap">骨・筋肉・神経</button>
+                </div>
+            </div>
+
+            <!-- Interactive Body Silhouette Visual Block -->
+            <div class="bg-cyber-card border border-cyber-border rounded-2xl p-4 flex flex-col items-center justify-center relative overflow-hidden min-h-[300px]">
+                <div class="absolute inset-0 bg-gradient-to-b from-cyan-950/10 via-transparent to-purple-950/20 pointer-events-none"></div>
+                <div class="text-xs text-slate-400 mb-2 w-full flex justify-between items-center">
+                    <span><i class="fa-solid fa-child text-cyan-400 mr-1"></i> インタラクティブ人体マップ</span>
+                    <span class="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-slate-400">部位をタップして選択</span>
+                </div>
+
+                <!-- SVG Human Silhouette with Hotspots -->
+                <div class="relative w-48 h-64 flex items-center justify-center my-2">
+                    <svg viewBox="0 0 100 200" class="w-full h-full opacity-40 text-cyan-300 stroke-current stroke-1 fill-cyan-950/30">
+                        <circle cx="50" cy="22" r="14" />
+                        <path d="M45,36 L55,36 L57,45 L43,45 Z" />
+                        <path d="M32,45 L68,45 L62,110 L38,110 Z" />
+                        <path d="M32,45 L18,100 L25,102 L36,55" />
+                        <path d="M68,45 L82,100 L75,102 L64,55" />
+                        <path d="M38,110 L34,185 L44,185 L48,110" />
+                        <path d="M62,110 L66,185 L56,185 L52,110" />
+                    </svg>
+
+                    <!-- Hotspots -->
+                    <button data-id="hair" class="body-hotspot absolute top-1 left-[43%] w-7 h-7 rounded-full bg-cyan-500/20 hover:bg-cyan-400 border border-cyan-400/60 flex items-center justify-center text-[10px] text-cyan-300 font-bold transition transform hover:scale-125" title="髪の毛・毛根">
+                        <i class="fa-solid fa-scissors"></i>
+                    </button>
+                    <button data-id="brain" class="body-hotspot absolute top-7 left-[43%] w-7 h-7 rounded-full bg-purple-500/20 hover:bg-purple-400 border border-purple-400/60 flex items-center justify-center text-[10px] text-purple-300 font-bold transition transform hover:scale-125" title="脳・頭蓋">
+                        <i class="fa-solid fa-brain"></i>
+                    </button>
+                    <button data-id="skin" class="body-hotspot absolute top-10 right-4 w-7 h-7 rounded-full bg-emerald-500/20 hover:bg-emerald-400 border border-emerald-400/60 flex items-center justify-center text-[10px] text-emerald-300 font-bold transition transform hover:scale-125" title="皮膚・表皮">
+                        <i class="fa-solid fa-hand-sparkles"></i>
+                    </button>
+                    <button data-id="heart" class="body-hotspot absolute top-[33%] left-[48%] w-8 h-8 rounded-full bg-red-500/30 hover:bg-red-500 border border-red-400 flex items-center justify-center text-[11px] text-red-300 font-bold transition transform hover:scale-125 animate-pulse" title="心臓・循環器">
+                        <i class="fa-solid fa-heart"></i>
+                    </button>
+                    <button data-id="vessels" class="body-hotspot absolute top-[42%] right-[22%] w-7 h-7 rounded-full bg-rose-500/20 hover:bg-rose-400 border border-rose-400/60 flex items-center justify-center text-[10px] text-rose-300 font-bold transition transform hover:scale-125" title="血管・血液">
+                        <i class="fa-solid fa-droplet"></i>
+                    </button>
+                    <button data-id="liver" class="body-hotspot absolute top-[41%] left-[36%] w-7 h-7 rounded-full bg-amber-500/20 hover:bg-amber-400 border border-amber-400/60 flex items-center justify-center text-[10px] text-amber-300 font-bold transition transform hover:scale-125" title="肝臓">
+                        <i class="fa-solid fa-cubes-stacked"></i>
+                    </button>
+                    <button data-id="stomach" class="body-hotspot absolute top-[47%] left-[45%] w-7 h-7 rounded-full bg-yellow-500/20 hover:bg-yellow-400 border border-yellow-400/60 flex items-center justify-center text-[10px] text-yellow-300 font-bold transition transform hover:scale-125" title="胃・腸（消化器）">
+                        <i class="fa-solid fa-apple-whole"></i>
+                    </button>
+                    <button data-id="bones" class="body-hotspot absolute top-[70%] left-[32%] w-7 h-7 rounded-full bg-blue-500/20 hover:bg-blue-400 border border-blue-400/60 flex items-center justify-center text-[10px] text-blue-300 font-bold transition transform hover:scale-125" title="骨格・関節">
+                        <i class="fa-solid fa-bone"></i>
+                    </button>
+                    <button data-id="muscles" class="body-hotspot absolute top-[62%] right-[32%] w-7 h-7 rounded-full bg-indigo-500/20 hover:bg-indigo-400 border border-indigo-400/60 flex items-center justify-center text-[10px] text-indigo-300 font-bold transition transform hover:scale-125" title="筋肉・筋膜">
+                        <i class="fa-solid fa-child-reaching"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Body Part List Container -->
+            <div class="bg-cyber-card border border-cyber-border rounded-2xl p-4 flex-1 flex flex-col min-h-[320px]">
+                <div class="text-xs font-semibold text-slate-400 mb-3 flex justify-between items-center">
+                    <span>部位周波数リスト (<span id="itemCount">0</span>件)</span>
+                    <span class="text-[10px] text-slate-500">クリックで周波数を切り替え</span>
+                </div>
+                <div id="partListContainer" class="space-y-2 overflow-y-auto max-h-[360px] pr-1"></div>
+            </div>
+
+        </section>
+
+        <!-- RIGHT COLUMN: Resonance Analyzer & Generator (7 cols) -->
+        <section class="lg:col-span-7 flex flex-col gap-6">
+
+            <!-- Selected Organ Detail Card -->
+            <div class="bg-cyber-card border border-cyber-border rounded-2xl p-5 relative overflow-hidden shadow-xl">
+                <div class="absolute top-0 right-0 w-48 h-48 bg-cyan-500/5 rounded-full blur-3xl pointer-events-none"></div>
+
+                <div class="flex flex-wrap items-start justify-between gap-4 border-b border-slate-800 pb-4">
+                    <div>
+                        <div class="flex items-center gap-2 mb-1">
+                            <span id="selectedCategory" class="px-2 py-0.5 rounded text-[10px] font-semibold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">カテゴリ</span>
+                            <span id="selectedSubtag" class="text-xs text-slate-400">学術・バイオレゾナンス指標</span>
+                        </div>
+                        <h2 id="selectedName" class="text-2xl md:text-3xl font-bold text-white tracking-wide">心臓 (Heart)</h2>
+                    </div>
+
+                    <div class="text-right">
+                        <div class="text-xs text-slate-400 font-tech">RESONANCE FREQUENCY</div>
+                        <div class="flex items-baseline justify-end gap-1">
+                            <span id="frequencyValue" class="text-3xl md:text-4xl font-tech font-extrabold text-cyan-400 glow-text">108.00</span>
+                            <span class="text-sm font-tech text-cyan-200">Hz</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="md:col-span-2 space-y-2">
+                        <p id="selectedDescription" class="text-sm text-slate-300 leading-relaxed">
+                            心臓は強固な生体電磁場を発する器官です。108Hzは心臓チャクラや自律神経系との調和・リラックス・循環の安定に効果的とされる共鳴トーンです。
+                        </p>
+                        <div class="flex flex-wrap gap-2 pt-1 text-xs">
+                            <div class="bg-slate-900/90 px-2.5 py-1 rounded-md text-slate-300 border border-slate-800">
+                                <i class="fa-solid fa-bullseye text-cyan-400 mr-1"></i>
+                                推奨用途: <span id="selectedEffect" class="text-cyan-200">自律神経調整・安らぎ</span>
+                            </div>
+                            <div class="bg-slate-900/90 px-2.5 py-1 rounded-md text-slate-300 border border-slate-800">
+                                <i class="fa-solid fa-stopwatch text-indigo-400 mr-1"></i>
+                                推奨時間: <span id="selectedDuration" class="text-indigo-200">5〜15分</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-3 flex flex-col justify-between">
+                        <div class="text-xs text-slate-400 font-medium mb-1">生体波形情報</div>
+                        <div class="space-y-1 text-xs">
+                            <div class="flex justify-between text-slate-300">
+                                <span class="text-slate-500">基本波形:</span>
+                                <span id="waveformType" class="font-mono text-cyan-300">Sine (正弦波)</span>
+                            </div>
+                            <div class="flex justify-between text-slate-300">
+                                <span class="text-slate-500">ソルフェジオ対比:</span>
+                                <span id="solfeggioMatch" class="font-mono text-purple-300">639 Hz 関連</span>
+                            </div>
+                            <div class="flex justify-between text-slate-300">
+                                <span class="text-slate-500">共鳴レベル:</span>
+                                <span class="font-mono text-emerald-400">High Resonance</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Real-time Visualizer & Cymatics Canvas -->
+            <div class="bg-cyber-card border border-cyber-border rounded-2xl p-4 flex flex-col gap-3 relative shadow-lg">
+                <div class="flex justify-between items-center text-xs text-slate-400">
+                    <span class="flex items-center gap-2">
+                        <i class="fa-solid fa-circle-dot text-cyan-400 animate-ping"></i>
+                        リアルタイム周波数可視化（サイマティクス/波形）
+                    </span>
+                    <div class="flex gap-2">
+                        <button id="vizModeWave" class="px-2 py-1 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-[11px]">オシロスコープ</button>
+                        <button id="vizModeCyma" class="px-2 py-1 rounded bg-slate-800 text-slate-400 hover:bg-slate-700 text-[11px]">サイマティクス(波動)</button>
+                    </div>
+                </div>
+
+                <div class="relative w-full h-48 bg-slate-950 rounded-xl overflow-hidden border border-slate-800 flex items-center justify-center">
+                    <canvas id="visualizerCanvas" class="w-full h-full block"></canvas>
+                    <div id="canvasOverlay" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/70 backdrop-blur-xs transition">
+                        <i class="fa-solid fa-circle-play text-4xl text-cyan-400 mb-2 opacity-80"></i>
+                        <span class="text-xs text-slate-300">下の再生ボタンを押して周波数サウンドを聴取</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Audio Controller Center -->
+            <div class="bg-cyber-card border border-cyber-border rounded-2xl p-5 space-y-5 shadow-xl">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                    <h3 class="font-tech font-bold text-slate-200 text-sm flex items-center gap-2">
+                        <i class="fa-solid fa-sliders text-cyan-400"></i>
+                        FREQUENCY GENERATOR CONTROLLER
+                    </h3>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-slate-400">バイノーラルモード</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="binauralToggle" class="sr-only peer">
+                            <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-500"></div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Play Button & Fine Tuning -->
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+                    <div class="md:col-span-5">
+                        <button id="playAudioBtn" class="w-full py-3.5 px-6 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold text-base shadow-lg shadow-cyan-500/25 transition transform active:scale-95 flex items-center justify-center gap-3">
+                            <i id="playIcon" class="fa-solid fa-play text-lg"></i>
+                            <span id="playBtnText">周波数音を再生する</span>
+                        </button>
+                    </div>
+
+                    <div class="md:col-span-7 bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col gap-1.5">
+                        <div class="flex justify-between text-xs text-slate-400">
+                            <span>微調整 (Fine Tuning)</span>
+                            <span id="fineTuneValue" class="font-mono text-cyan-300">0.0 Hz</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="text-xs text-slate-500 font-mono">-10</span>
+                            <input type="range" id="fineTuneSlider" min="-10" max="10" step="0.1" value="0" 
+                                   class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-400">
+                            <span class="text-xs text-slate-500 font-mono">+10</span>
+                            <button id="resetFineTune" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-1 rounded">リセット</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Volume & Timer Sliders -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                    <div class="space-y-1.5">
+                        <div class="flex justify-between text-xs text-slate-400">
+                            <span class="flex items-center gap-1.5">
+                                <i class="fa-solid fa-volume-high text-slate-400"></i> 音量 (Volume)
+                            </span>
+                            <span id="volumeValue" class="font-mono text-slate-200">50%</span>
+                        </div>
+                        <input type="range" id="volumeSlider" min="0" max="100" value="50" 
+                               class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-400">
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <div class="flex justify-between text-xs text-slate-400">
+                            <span class="flex items-center gap-1.5">
+                                <i class="fa-solid fa-hourglass-half text-slate-400"></i> 自動停止タイマー
+                            </span>
+                            <span id="timerDisplay" class="font-mono text-slate-200">オフ</span>
+                        </div>
+                        <div class="flex gap-2 text-xs">
+                            <button data-time="0" class="timer-btn flex-1 py-1 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">オフ</button>
+                            <button data-time="3" class="timer-btn flex-1 py-1 rounded bg-slate-800 text-slate-400 hover:bg-slate-700">3分</button>
+                            <button data-time="5" class="timer-btn flex-1 py-1 rounded bg-slate-800 text-slate-400 hover:bg-slate-700">5分</button>
+                            <button data-time="15" class="timer-btn flex-1 py-1 rounded bg-slate-800 text-slate-400 hover:bg-slate-700">15分</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- Disclaimer Modal -->
+    <div id="disclaimerModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-cyber-card border border-cyber-border rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl relative">
+            <button id="closeModalBtn" class="absolute top-4 right-4 text-slate-400 hover:text-white text-lg">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <div class="flex items-center gap-3 text-cyan-400 text-xl font-bold">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <span>ご利用に関するご案内・免責事項</span>
+            </div>
+            <div class="text-xs text-slate-300 space-y-2.5 leading-relaxed">
+                <p>
+                    当アプリケーション「Body Resonance Lab」で紹介されている人体部位の固有周波数、バイオレゾナンス数値、ソルフェジオ音響は、音響学、物理的固有共振、および代替ウェルネス理論に基づくエンターテインメント・リラクゼーション用コンテンツです。
+                </p>
+                <p>
+                    本アプリは<strong>医療機器ではなく、病気の診断・治療・予防を目的としたものではありません。</strong>体調不良や疾患がある場合は、必ず専門の医療機関を受診してください。
+                </p>
+                <p>
+                    長時間の高音量での聴取は聴覚に悪影響を与える可能性があるため、適度な音量でお楽しみください。
+                </p>
+            </div>
+            <button id="confirmModalBtn" class="w-full py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-xl text-xs transition">
+                理解して利用する
+            </button>
+        </div>
+    </div>
+
+    <footer class="border-t border-slate-800/80 py-4 text-center text-xs text-slate-500">
+        <p>© 2026 Body Resonance Lab | Sound & Bio-Frequency Explorer</p>
+    </footer>
+
+    <script>
+        const bodyPartsData = [
+            {
+                id: 'hair',
+                name: '髪の毛・毛根 (Hair & Scalp)',
+                category: 'head',
+                freq: 465.0,
+                solfeggio: '528 Hz 近合',
+                waveform: 'Sine',
+                effect: '毛根活性・頭皮リフレッシュ',
+                duration: '5〜10分',
+                description: '髪の毛や頭皮の細胞更新を促すとされるバイオ振動数。528HzなどのDNA修復周波数と調和し、毛根へのエネルギー供給とリフレッシュをサポートします。'
+            },
+            {
+                id: 'brain',
+                name: '脳・頭蓋・神経系 (Brain & Nervous)',
+                category: 'head',
+                freq: 10.5,
+                solfeggio: '136.1 Hz (オーム) 関連',
+                waveform: 'Sine',
+                effect: 'アルファ波誘導・集中＆瞑想',
+                duration: '10〜20分',
+                description: '脳のアルファ波領域（10.5Hz）に同調し、深いリラックスと脳疲労の軽減、クリエイティビティの向上を促します。バイノーラルビート再生に最適です。'
+            },
+            {
+                id: 'skin',
+                name: '皮膚・表皮 (Skin & Epidermis)',
+                category: 'head',
+                freq: 528.0,
+                solfeggio: '528 Hz (ソルフェジオ)',
+                waveform: 'Sine',
+                effect: '細胞ターンオーバー・美肌ケア',
+                duration: '10〜15分',
+                description: '「愛と奇跡の周波数」として広く知られる528Hzは、皮膚細胞の修復や組織再生、ターンオーバーの活性化に関連付けられています。'
+            },
+            {
+                id: 'eyes',
+                name: '眼球・視覚系 (Eyes & Vision)',
+                category: 'head',
+                freq: 18.0,
+                solfeggio: '285 Hz 関連',
+                waveform: 'Sine',
+                effect: '眼精疲労軽減・視線リセット',
+                duration: '3〜5分',
+                description: '眼球の物理的固有共振周波数帯（約18Hz）。PCやスマートフォンによる目元の緊張を解きほぐし、疲労感をケアします。'
+            },
+            {
+                id: 'heart',
+                name: '心臓・胸部 (Heart & Cardiovascular)',
+                category: 'organ',
+                freq: 108.0,
+                solfeggio: '639 Hz 関連',
+                waveform: 'Sine',
+                effect: '自律神経調整・安らぎ',
+                duration: '5〜15分',
+                description: '心臓チャクラや心拍リズムと共鳴する108Hz。自律神経のバランスを整え、不安やストレスを和らげて穏やかな鼓動をもたらします。'
+            },
+            {
+                id: 'liver',
+                name: '肝臓・代謝 (Liver & Metabolism)',
+                category: 'organ',
+                freq: 317.8,
+                solfeggio: '417 Hz 関連',
+                waveform: 'Sine',
+                effect: '解毒・代謝機能サポート',
+                duration: '10分',
+                description: 'バイオレゾナンス療法において肝臓の代謝活性や毒素排出に関連とされる317.8Hz。重厚感と安定感のあるトーンです。'
+            },
+            {
+                id: 'stomach',
+                name: '胃・腸・消化器 (Stomach & Digestive)',
+                category: 'organ',
+                freq: 110.0,
+                solfeggio: '174 Hz 関連',
+                waveform: 'Sine',
+                effect: '腸内環境調和・消化促進',
+                duration: '10分',
+                description: '胃や腸の平滑筋運動に働きかけ、腹部の膨満感やストレス性の胃腸疲労を柔らげるグラウンディング周波数です。'
+            },
+            {
+                id: 'kidneys',
+                name: '腎臓・副腎 (Kidneys & Adrenals)',
+                category: 'organ',
+                freq: 625.0,
+                solfeggio: '741 Hz 関連',
+                waveform: 'Sine',
+                effect: '水分バランス・疲労回復',
+                duration: '10分',
+                description: '体内のフィルタリングを担う腎臓とエネルギー代謝をサポートする副腎の活性周波数。クリアで通る高音が特徴です。'
+            },
+            {
+                id: 'vessels',
+                name: '血管・血液循環 (Blood Vessels)',
+                category: 'circulatory',
+                freq: 586.0,
+                solfeggio: '528 Hz 拡張',
+                waveform: 'Sine',
+                effect: '血流促進・血管柔軟性',
+                duration: '8〜12分',
+                description: '血管の内皮細胞の弾力性とスムーズな血液循環をイメージしたトーン。冷え性の緩和や全身のめぐりケアに有用です。'
+            },
+            {
+                id: 'bones',
+                name: '骨格・関節 (Bones & Joints)',
+                category: 'tissue',
+                freq: 174.0,
+                solfeggio: '174 Hz (ソルフェジオ)',
+                waveform: 'Triangle',
+                effect: '痛みの軽減・骨密度安定',
+                duration: '10〜15分',
+                description: 'ソルフェジオ周波数の中で最も低い174Hz。骨や関節の痛みを和らげ、身体のコアを安定させるグラウンディング効果を持ちます。'
+            },
+            {
+                id: 'muscles',
+                name: '筋肉・筋膜 (Muscles & Fascia)',
+                category: 'tissue',
+                freq: 324.0,
+                solfeggio: '432 Hz 共鳴',
+                waveform: 'Sine',
+                effect: '筋緊張緩和・リカバリー',
+                duration: '10分',
+                description: 'スポーツ後や凝り固まった筋肉・筋膜（ファシア）のこわばりをほぐし、乳酸の代謝と筋肉リカバリーをサポートします。'
+            },
+            {
+                id: 'autonomic',
+                name: '自律神経・全身 (Autonomic & Schumann)',
+                category: 'tissue',
+                freq: 7.83,
+                solfeggio: '432 Hz 関連',
+                waveform: 'Sine',
+                effect: '地球共振・深層リセット',
+                duration: '15分',
+                description: '「地球の脈動」と呼ばれるシューマン共振7.83Hz。全身の自律神経を地球の自然環境と調和させ、究極の安定感を与えます。'
+            }
+        ];
+
+        let currentPart = bodyPartsData.find(p => p.id === 'heart');
+        let currentCategory = 'all';
+        let searchQuery = '';
+        let isPlaying = false;
+        let fineTuneHz = 0.0;
+        let binauralMode = false;
+        let vizMode = 'wave';
+
+        let audioCtx = null;
+        let primaryOsc = null;
+        let secondaryOsc = null;
+        let gainNode = null;
+        let analyser = null;
+        let remainingTimerSeconds = 0;
+        let timerInterval = null;
+
+        const partListContainer = document.getElementById('partListContainer');
+        const itemCountEl = document.getElementById('itemCount');
+        const searchInput = document.getElementById('searchInput');
+        const categoryTabs = document.getElementById('categoryTabs');
+        
+        const selectedNameEl = document.getElementById('selectedName');
+        const selectedCategoryEl = document.getElementById('selectedCategory');
+        const frequencyValueEl = document.getElementById('frequencyValue');
+        const selectedDescriptionEl = document.getElementById('selectedDescription');
+        const selectedEffectEl = document.getElementById('selectedEffect');
+        const selectedDurationEl = document.getElementById('selectedDuration');
+        const waveformTypeEl = document.getElementById('waveformType');
+        const solfeggioMatchEl = document.getElementById('solfeggioMatch');
+
+        const playAudioBtn = document.getElementById('playAudioBtn');
+        const playIcon = document.getElementById('playIcon');
+        const playBtnText = document.getElementById('playBtnText');
+        const fineTuneSlider = document.getElementById('fineTuneSlider');
+        const fineTuneValue = document.getElementById('fineTuneValue');
+        const resetFineTuneBtn = document.getElementById('resetFineTune');
+        const volumeSlider = document.getElementById('volumeSlider');
+        const volumeValue = document.getElementById('volumeValue');
+        const binauralToggle = document.getElementById('binauralToggle');
+        const timerDisplay = document.getElementById('timerDisplay');
+        const timerBtns = document.querySelectorAll('.timer-btn');
+
+        const canvas = document.getElementById('visualizerCanvas');
+        const ctx = canvas.getContext('2d');
+        const canvasOverlay = document.getElementById('canvasOverlay');
+        const vizModeWave = document.getElementById('vizModeWave');
+        const vizModeCyma = document.getElementById('vizModeCyma');
+
+        const disclaimerBtn = document.getElementById('disclaimerBtn');
+        const disclaimerModal = document.getElementById('disclaimerModal');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const confirmModalBtn = document.getElementById('confirmModalBtn');
+
+        function renderPartList() {
+            partListContainer.innerHTML = '';
+            
+            const filtered = bodyPartsData.filter(part => {
+                const matchesCat = (currentCategory === 'all' || part.category === currentCategory);
+                const matchesSearch = part.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                      part.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                      part.freq.toString().includes(searchQuery);
+                return matchesCat && matchesSearch;
+            });
+
+            itemCountEl.textContent = filtered.length;
+
+            if (filtered.length === 0) {
+                partListContainer.innerHTML = `<div class="text-center py-8 text-slate-500 text-xs">該当する部位が見つかりませんでした。</div>`;
+                return;
+            }
+
+            filtered.forEach(part => {
+                const isSelected = part.id === currentPart.id;
+                const card = document.createElement('div');
+                card.className = `p-3 rounded-xl border transition cursor-pointer flex items-center justify-between ${
+                    isSelected ? 'bg-cyan-500/10 border-cyan-400 text-white glow-effect' : 'bg-slate-900/60 border-slate-800 hover:border-slate-700 text-slate-300'
+                }`;
+
+                card.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg ${isSelected ? 'bg-cyan-500 text-slate-950' : 'bg-slate-800 text-cyan-400'} flex items-center justify-center font-bold text-xs">
+                            <i class="fa-solid ${getIconForCategory(part.category)}"></i>
+                        </div>
+                        <div>
+                            <div class="text-sm font-semibold">${part.name}</div>
+                            <div class="text-[11px] text-slate-400">${part.effect}</div>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-sm font-tech font-bold text-cyan-400">${part.freq} <span class="text-[10px]">Hz</span></div>
+                        <div class="text-[10px] text-slate-500">${part.duration}</div>
+                    </div>
+                `;
+
+                card.addEventListener('click', () => selectBodyPart(part));
+                partListContainer.appendChild(card);
+            });
+        }
+
+        function getIconForCategory(cat) {
+            switch(cat) {
+                case 'head': return 'fa-brain';
+                case 'organ': return 'fa-heart-pulse';
+                case 'circulatory': return 'fa-droplet';
+                case 'tissue': return 'fa-bone';
+                default: return 'fa-wave-square';
+            }
+        }
+
+        function selectBodyPart(part) {
+            currentPart = part;
+            renderPartList();
+            updateDetailView();
+            if (isPlaying) updateAudioFrequency();
+        }
+
+        function updateDetailView() {
+            const actualFreq = (currentPart.freq + fineTuneHz).toFixed(2);
+            selectedNameEl.textContent = currentPart.name;
+            selectedCategoryEl.textContent = getCategoryLabel(currentPart.category);
+            frequencyValueEl.textContent = actualFreq;
+            selectedDescriptionEl.textContent = currentPart.description;
+            selectedEffectEl.textContent = currentPart.effect;
+            selectedDurationEl.textContent = currentPart.duration;
+            waveformTypeEl.textContent = currentPart.waveform;
+            solfeggioMatchEl.textContent = currentPart.solfeggio;
+        }
+
+        function getCategoryLabel(cat) {
+            switch(cat) {
+                case 'head': return '頭部・皮膚・髪';
+                case 'organ': return '主要臓器';
+                case 'circulatory': return '血管・循環系';
+                case 'tissue': return '骨・筋肉・神経';
+                default: return '全般';
+            }
+        }
+
+        function initAudio() {
+            if (!audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContext();
+            }
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        function startAudio() {
+            initAudio();
+            const targetFreq = currentPart.freq + fineTuneHz;
+
+            gainNode = audioCtx.createGain();
+            const vol = volumeSlider.value / 100;
+            gainNode.gain.setValueAtTime(vol * 0.3, audioCtx.currentTime);
+
+            analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 256;
+
+            primaryOsc = audioCtx.createOscillator();
+            primaryOsc.type = currentPart.waveform.toLowerCase() === 'triangle' ? 'triangle' : 'sine';
+            primaryOsc.frequency.setValueAtTime(targetFreq, audioCtx.currentTime);
+
+            if (binauralMode) {
+                const merger = audioCtx.createChannelMerger(2);
+                const leftGain = audioCtx.createGain();
+                const rightGain = audioCtx.createGain();
+
+                secondaryOsc = audioCtx.createOscillator();
+                secondaryOsc.type = primaryOsc.type;
+                secondaryOsc.frequency.setValueAtTime(targetFreq + 4, audioCtx.currentTime);
+
+                primaryOsc.connect(leftGain);
+                secondaryOsc.connect(rightGain);
+                leftGain.connect(merger, 0, 0);
+                rightGain.connect(merger, 0, 1);
+                merger.connect(gainNode);
+                secondaryOsc.start();
+            } else {
+                primaryOsc.connect(gainNode);
+            }
+
+            gainNode.connect(analyser);
+            analyser.connect(audioCtx.destination);
+
+            primaryOsc.start();
+            isPlaying = true;
+
+            playIcon.className = 'fa-solid fa-square text-lg';
+            playBtnText.textContent = '共鳴サウンドを停止';
+            playAudioBtn.classList.remove('from-cyan-500', 'to-blue-600');
+            playAudioBtn.classList.add('from-purple-600', 'to-pink-600');
+            canvasOverlay.classList.add('opacity-0', 'pointer-events-none');
+        }
+
+        function stopAudio() {
+            if (primaryOsc) {
+                primaryOsc.stop();
+                primaryOsc.disconnect();
+                primaryOsc = null;
+            }
+            if (secondaryOsc) {
+                secondaryOsc.stop();
+                secondaryOsc.disconnect();
+                secondaryOsc = null;
+            }
+            isPlaying = false;
+
+            playIcon.className = 'fa-solid fa-play text-lg';
+            playBtnText.textContent = '周波数音を再生する';
+            playAudioBtn.classList.remove('from-purple-600', 'to-pink-600');
+            playAudioBtn.classList.add('from-cyan-500', 'to-blue-600');
+            canvasOverlay.classList.remove('opacity-0', 'pointer-events-none');
+        }
+
+        function updateAudioFrequency() {
+            if (!isPlaying || !primaryOsc) return;
+            const targetFreq = currentPart.freq + fineTuneHz;
+            primaryOsc.frequency.setValueAtTime(targetFreq, audioCtx.currentTime);
+            if (secondaryOsc) secondaryOsc.frequency.setValueAtTime(targetFreq + 4, audioCtx.currentTime);
+        }
+
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function drawVisualizer() {
+            requestAnimationFrame(drawVisualizer);
+            ctx.fillStyle = '#020617';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            if (!isPlaying || !analyser) {
+                ctx.beginPath();
+                ctx.moveTo(0, canvas.height / 2);
+                ctx.lineTo(canvas.width, canvas.height / 2);
+                ctx.strokeStyle = '#1e293b';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                return;
+            }
+
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+
+            if (vizMode === 'wave') {
+                analyser.getByteTimeDomainData(dataArray);
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#00f2fe';
+                ctx.beginPath();
+                const sliceWidth = canvas.width * 1.0 / bufferLength;
+                let x = 0;
+                for (let i = 0; i < bufferLength; i++) {
+                    const v = dataArray[i] / 128.0;
+                    const y = v * canvas.height / 2;
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                    x += sliceWidth;
+                }
+                ctx.lineTo(canvas.width, canvas.height / 2);
+                ctx.stroke();
+            } else {
+                analyser.getByteFrequencyData(dataArray);
+                const centerX = canvas.width / 2;
+                const centerY = canvas.height / 2;
+                const radius = Math.min(centerX, centerY) - 15;
+
+                ctx.save();
+                ctx.translate(centerX, centerY);
+                const points = 32;
+                ctx.beginPath();
+                for (let i = 0; i < points; i++) {
+                    const value = dataArray[i % bufferLength] || 10;
+                    const r = radius * 0.4 + (value / 255) * 35;
+                    const angle = (i / points) * Math.PI * 2;
+                    const x = Math.cos(angle) * r;
+                    const y = Math.sin(angle) * r;
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.closePath();
+                ctx.strokeStyle = '#7f00ff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.arc(0, 0, radius * 0.8, 0, Math.PI * 2);
+                ctx.strokeStyle = 'rgba(0, 242, 254, 0.3)';
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+        drawVisualizer();
+
+        playAudioBtn.addEventListener('click', () => {
+            if (isPlaying) stopAudio();
+            else startAudio();
+        });
+
+        fineTuneSlider.addEventListener('input', (e) => {
+            fineTuneHz = parseFloat(e.target.value);
+            fineTuneValue.textContent = (fineTuneHz >= 0 ? '+' : '') + fineTuneHz.toFixed(1) + ' Hz';
+            updateDetailView();
+        });
+
+        resetFineTuneBtn.addEventListener('click', () => {
+            fineTuneSlider.value = 0;
+            fineTuneHz = 0;
+            fineTuneValue.textContent = '0.0 Hz';
+            updateDetailView();
+        });
+
+        volumeSlider.addEventListener('input', (e) => {
+            const vol = e.target.value;
+            volumeValue.textContent = vol + '%';
+            if (gainNode && audioCtx) gainNode.gain.setValueAtTime((vol / 100) * 0.3, audioCtx.currentTime);
+        });
+
+        binauralToggle.addEventListener('change', (e) => {
+            binauralMode = e.target.checked;
+            if (isPlaying) {
+                stopAudio();
+                startAudio();
+            }
+        });
+
+        timerBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                timerBtns.forEach(b => {
+                    b.classList.remove('bg-cyan-500/20', 'text-cyan-300', 'border', 'border-cyan-500/40');
+                    b.classList.add('bg-slate-800', 'text-slate-400');
+                });
+                btn.classList.remove('bg-slate-800', 'text-slate-400');
+                btn.classList.add('bg-cyan-500/20', 'text-cyan-300', 'border', 'border-cyan-500/40');
+
+                const minutes = parseInt(btn.dataset.time);
+                if (timerInterval) clearInterval(timerInterval);
+
+                if (minutes > 0) {
+                    remainingTimerSeconds = minutes * 60;
+                    timerDisplay.textContent = `${minutes}:00`;
+                    timerInterval = setInterval(() => {
+                        remainingTimerSeconds--;
+                        const m = Math.floor(remainingTimerSeconds / 60);
+                        const s = remainingTimerSeconds % 60;
+                        timerDisplay.textContent = `${m}:${s < 10 ? '0' : ''}${s}`;
+                        if (remainingTimerSeconds <= 0) {
+                            clearInterval(timerInterval);
+                            stopAudio();
+                            timerDisplay.textContent = '終了';
+                        }
+                    }, 1000);
+                } else {
+                    timerDisplay.textContent = 'オフ';
+                }
+            });
+        });
+
+        categoryTabs.addEventListener('click', (e) => {
+            if (e.target.classList.contains('cat-tab')) {
+                document.querySelectorAll('.cat-tab').forEach(t => {
+                    t.classList.remove('bg-cyan-500/20', 'text-cyan-300', 'border', 'border-cyan-500/40');
+                    t.classList.add('bg-slate-800', 'text-slate-400');
+                });
+                e.target.classList.remove('bg-slate-800', 'text-slate-400');
+                e.target.classList.add('bg-cyan-500/20', 'text-cyan-300', 'border', 'border-cyan-500/40');
+                currentCategory = e.target.dataset.cat;
+                renderPartList();
+            }
+        });
+
+        searchInput.addEventListener('input', (e) => {
+            searchQuery = e.target.value.trim();
+            renderPartList();
+        });
+
+        document.querySelectorAll('.body-hotspot').forEach(hotspot => {
+            hotspot.addEventListener('click', () => {
+                const id = hotspot.dataset.id;
+                const part = bodyPartsData.find(p => p.id === id);
+                if (part) selectBodyPart(part);
+            });
+        });
+
+        vizModeWave.addEventListener('click', () => {
+            vizMode = 'wave';
+            vizModeWave.className = 'px-2 py-1 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-[11px]';
+            vizModeCyma.className = 'px-2 py-1 rounded bg-slate-800 text-slate-400 hover:bg-slate-700 text-[11px]';
+        });
+
+        vizModeCyma.addEventListener('click', () => {
+            vizMode = 'cyma';
+            vizModeCyma.className = 'px-2 py-1 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-[11px]';
+            vizModeWave.className = 'px-2 py-1 rounded bg-slate-800 text-slate-400 hover:bg-slate-700 text-[11px]';
+        });
+
+        disclaimerBtn.addEventListener('click', () => disclaimerModal.classList.remove('hidden'));
+        closeModalBtn.addEventListener('click', () => disclaimerModal.classList.add('hidden'));
+        confirmModalBtn.addEventListener('click', () => disclaimerModal.classList.add('hidden'));
+
+        renderPartList();
+        updateDetailView();
+    </script>
+</body>
+</html>
